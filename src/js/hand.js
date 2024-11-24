@@ -1,52 +1,63 @@
-let video; // Video element
-let handpose; // ml5 handpose model
-let predictions = []; // Store hand predictions
+let hands;
+let camera;
+let handLandmarks = [];
 
 function setup() {
-    // Create a canvas and attach it to the DOM
     const canvas = createCanvas(640, 480);
     canvas.parent("canvas-container");
 
-    // Set up the video capture
-    video = createCapture(VIDEO);
-    video.size(width, height);
-    video.hide(); // Hide the default video element
+    // Initialize video capture
+    const videoElement = createCapture(VIDEO);
+    videoElement.size(width, height);
+    videoElement.hide();
 
-    // Load the handpose model
-    handpose = ml5.handpose(video, modelLoaded);
-
-    // Listen for predictions
-    handpose.on("predict", (results) => {
-        predictions = results;
+    // Initialize MediaPipe Hands
+    hands = new Hands({
+        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
     });
+    hands.setOptions({
+        maxNumHands: 2, // Enable multi-hand tracking
+        modelComplexity: 1,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+    });
+
+    // Set up the results callback
+    hands.onResults(onHandsResults);
+
+    // Attach camera
+    camera = new Camera(videoElement.elt, {
+        onFrame: async () => {
+            await hands.send({ image: videoElement.elt });
+        },
+    });
+    camera.start();
 }
 
-function modelLoaded() {
-    console.log("Handpose model loaded!");
+function onHandsResults(results) {
+    handLandmarks = results.multiHandLandmarks || [];
+    // console.log("Detected Hands:", handLandmarks); // Debugging output
 }
 
 function draw() {
     background(220);
 
-    // Display the video feed
-    image(video, 0, 0, width, height);
-
-    // Draw the hand landmarks
-    drawHandLandmarks();
-}
-
-function drawHandLandmarks() {
-    if (predictions.length > 0) {
-        for (let i = 0; i < predictions.length; i++) {
-            const landmarks = predictions[i].landmarks;
-
-            // Draw circles for each landmark
-            for (let j = 0; j < landmarks.length; j++) {
-                const [x, y, z] = landmarks[j];
-                fill(0, 255, 0);
-                noStroke();
-                ellipse(x, y, 10, 10);
-            }
-        }
+    // Draw video
+    if (camera && camera.videoElement) {
+        image(camera.videoElement, 0, 0, width, height);
     }
+
+    // Draw hand landmarks for each detected hand
+    handLandmarks.forEach((hand) => {
+        hand.forEach(({ x, y }) => {
+            fill(0, 255, 0);
+            noStroke();
+            ellipse(x * width, y * height, 10, 10);
+        });
+    });
+
+    // Display the number of detected hands
+    fill(0);
+    textSize(16);
+    text(`Detected Hands: ${handLandmarks.length}`, 10, height - 10);
 }
