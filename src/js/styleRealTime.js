@@ -1,36 +1,50 @@
-let styleModel; // Global variable to hold the style transfer model
-let video;      // Video element
-let img;        // Styled image
-let graphics;   // Offscreen graphics canvas
+let styleModel;  // Global variable to hold the style transfer model
+let video;       // Video element
+let graphics;    // Offscreen graphics canvas
+let img;         // Styled image
+const styles = ["wave", "scream", "udnie", "la_muse", "rain_princess"]; // List of styles
 
 function setup() {
     const canvas = createCanvas(640, 480);
     canvas.parent("canvas-container");
 
-    // Load webcam and hide it
+    // Load webcam
     video = createCapture(VIDEO, videoLoaded);
     video.size(640, 480);
     video.hide();
 
     // Create an off-screen canvas
     graphics = createGraphics(640, 480);
+
+    // Add a dropdown for style selection
+    const dropdown = createSelect();
+    dropdown.parent("style-selector"); // Attach to the HTML element
+    dropdown.option("Select a Style");
+    styles.forEach((style) => dropdown.option(style));
+
+    // Listen for style changes
+    dropdown.changed(() => {
+        const selectedStyle = dropdown.value();
+        if (selectedStyle !== "Select a Style") {
+            loadStyleModel(selectedStyle);
+        }
+    });
 }
 
 function videoLoaded() {
     console.log("Video loaded!");
+}
 
-    // Load the style transfer model
-    const style = "wave"; // Replace with your preferred style
+function loadStyleModel(style) {
     const styleURL = `https://raw.githubusercontent.com/ml5js/ml5-data-and-models/main/models/style-transfer/${style}`;
-    
-    // Load the style transfer model and assign it to the global variable
-    styleModel = ml5.styleTransfer(styleURL, modelLoaded); // Model loaded callback
+
+    // Load the selected style transfer model
+    styleModel = ml5.styleTransfer(styleURL, modelLoaded);
+    console.log(`Loading style: ${style}`);
 }
 
 function modelLoaded() {
     console.log("Style transfer model loaded!");
-
-    // Start applying style transfer
     transferStyle();
 }
 
@@ -40,7 +54,7 @@ function transferStyle() {
         return;
     }
 
-    // Transfer style using the graphics buffer
+    // Apply style transfer using the graphics buffer
     styleModel.transfer(graphics, (err, result) => {
         if (err) {
             console.error("Error during style transfer:", err);
@@ -49,7 +63,6 @@ function transferStyle() {
 
         // Update the styled image
         img = createImg(result.src).hide();
-        console.log("Style transferred successfully!");
 
         // Recursively call transferStyle for live updates
         transferStyle();
