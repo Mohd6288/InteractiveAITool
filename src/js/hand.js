@@ -2,7 +2,7 @@ let hands;
 let camera;
 let handLandmarks = [];
 let gesture = "None"; // Store the detected gesture
-
+let socket;
 // Hand landmark connections for skeleton
 const HAND_CONNECTIONS = [
     [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
@@ -15,6 +15,12 @@ const HAND_CONNECTIONS = [
 function setup() {
     const canvas = createCanvas(640, 480);
     canvas.parent("canvas-container");
+
+    // Initialize WebSocket
+    socket = new WebSocket("ws://localhost:8080");
+
+    socket.onopen = () => console.log("Connected to WebSocket server");
+    socket.onmessage = (event) => console.log("Message from server:", event.data);
 
     // Initialize video capture
     const videoElement = createCapture(VIDEO);
@@ -121,5 +127,13 @@ function detectGesture() {
         }
     } else {
         gesture = "No Hands Detected";
+    }
+
+    // Send gesture data to the server
+    if (handLandmarks.length > 0) {
+        const gestureData = { type: "hand", gesture: "Thumbs Up" };
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(gestureData));
+        }
     }
 }

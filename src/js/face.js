@@ -3,12 +3,19 @@ const captureWidth = 640;
 const captureHeight = 480;
 
 let faceApi;
+let socket;
 let detections = [];
 const emotions = ["neutral", "happy", "sad", "angry", "fearful", "disgusted", "surprised"];
 
 function setup() {
     const canvas = createCanvas(captureWidth, captureHeight);
     canvas.parent("canvas-container");
+
+    // websocket
+    socket = new WebSocket("ws://localhost:8080");
+
+    socket.onopen = () => console.log("Connected to WebSocket server");
+    socket.onmessage = (event) => console.log("Message from server:", event.data);
 
     // Video capture setup
     capture = createCapture(VIDEO);
@@ -32,7 +39,15 @@ function gotFaces(error, results) {
     }
     detections = results;
     faceApi.detect(gotFaces); // Continue detection
+        // Example: Send detected face data to the server
+        const faceData = { type: "face", emotion: "Happy" };
+        if (socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(faceData));
+        }
+
 }
+
+
 
 function draw() {
     background(0);
