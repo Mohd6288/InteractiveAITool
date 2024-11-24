@@ -1,84 +1,52 @@
-let styleModel;  // Global variable to hold the style transfer model
-let video;       // Video element
-let graphics;    // Offscreen graphics canvas
-let img;         // Styled image
-const styles = ["wave", "scream", "udnie", "la_muse", "rain_princess"]; // List of styles
+let video; // Video element
+let handpose; // ml5 handpose model
+let predictions = []; // Store hand predictions
 
 function setup() {
+    // Create a canvas and attach it to the DOM
     const canvas = createCanvas(640, 480);
     canvas.parent("canvas-container");
 
-    // Load webcam
-    video = createCapture(VIDEO, videoLoaded);
-    video.size(640, 480);
-    video.hide();
+    // Set up the video capture
+    video = createCapture(VIDEO);
+    video.size(width, height);
+    video.hide(); // Hide the default video element
 
-    // Create an off-screen canvas
-    graphics = createGraphics(640, 480);
+    // Load the handpose model
+    handpose = ml5.handpose(video, modelLoaded);
 
-    // Add a dropdown for style selection
-    const dropdown = createSelect();
-    dropdown.parent("style-selector"); // Attach to the HTML element
-    dropdown.option("Select a Style");
-    styles.forEach((style) => dropdown.option(style));
-
-    // Listen for style changes
-    dropdown.changed(() => {
-        const selectedStyle = dropdown.value();
-        if (selectedStyle !== "Select a Style") {
-            loadStyleModel(selectedStyle);
-        }
+    // Listen for predictions
+    handpose.on("predict", (results) => {
+        predictions = results;
     });
-}
-
-function videoLoaded() {
-    console.log("Video loaded!");
-}
-
-function loadStyleModel(style) {
-    const styleURL = `https://raw.githubusercontent.com/ml5js/ml5-data-and-models/main/models/style-transfer/${style}`;
-
-    // Load the selected style transfer model
-    styleModel = ml5.styleTransfer(styleURL, modelLoaded);
-    console.log(`Loading style: ${style}`);
 }
 
 function modelLoaded() {
-    console.log("Style transfer model loaded!");
-    transferStyle();
-}
-
-function transferStyle() {
-    if (!styleModel) {
-        console.error("Style model not loaded!");
-        return;
-    }
-
-    // Apply style transfer using the graphics buffer
-    styleModel.transfer(graphics, (err, result) => {
-        if (err) {
-            console.error("Error during style transfer:", err);
-            return;
-        }
-
-        // Update the styled image
-        img = createImg(result.src).hide();
-
-        // Recursively call transferStyle for live updates
-        transferStyle();
-    });
+    console.log("Handpose model loaded!");
 }
 
 function draw() {
-    background(0);
+    background(220);
 
-    // Draw the raw video feed onto the graphics buffer
-    graphics.image(video, 0, 0, width, height);
+    // Display the video feed
+    image(video, 0, 0, width, height);
 
-    // Display the styled image or fallback to raw video feed
-    if (img) {
-        image(img, 0, 0, width, height);
-    } else {
-        image(video, 0, 0, width, height);
+    // Draw the hand landmarks
+    drawHandLandmarks();
+}
+
+function drawHandLandmarks() {
+    if (predictions.length > 0) {
+        for (let i = 0; i < predictions.length; i++) {
+            const landmarks = predictions[i].landmarks;
+
+            // Draw circles for each landmark
+            for (let j = 0; j < landmarks.length; j++) {
+                const [x, y, z] = landmarks[j];
+                fill(0, 255, 0);
+                noStroke();
+                ellipse(x, y, 10, 10);
+            }
+        }
     }
 }
